@@ -24,7 +24,7 @@ class ThreadPool(object):
         #An event manages a flag that can be set to true with the set() method and reset to false with the clear() method. 
         #The wait() method blocks until the flag is true.
         self._exit_flag = threading.Event()
-        self._threads = []
+        self._threads = [] #a list
         for i in range(size):
             t = threading.Thread(target=self._run, name=str(i))
             t.start()
@@ -38,6 +38,7 @@ class ThreadPool(object):
             self._data_ready.notify()
 
     def join(self):
+        # Queue.join() 实际上意味着等到队列为空，再执行别的操作
         self._queue.join()
         self._exit_flag.set()
         with self._data_ready:
@@ -48,12 +49,14 @@ class ThreadPool(object):
     def _run(self):
         while True:
             with self._data_ready:
+                # Queue.empty() 如果队列为空，返回True,反之False
                 while self._queue.empty() and not self._exit_flag.is_set():
                     self._data_ready.wait()
                 if self._exit_flag.is_set():
                     break
                 cb, args = self._queue.get_nowait()
             cb(*args)
+            # 在完成一项工作之后，Queue.task_done()函数向任务已经完成的队列发送一个信号
             self._queue.task_done()
 
 def spr_url(url):
@@ -104,6 +107,7 @@ while True:
     else:
         thr = ThreadPool(10)
         # 取出URL 并且爬虫，结果放入result_list
+        # Queue.qsize() 返回队列的大小
         for num in range(spider_list.qsize()):
             thr.add_task(spr_url, spider_list.get())
         thr.join()
